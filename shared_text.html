@@ -1,0 +1,2377 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>StudyMaster Pro - Organizza il tuo Studio</title>
+    
+    <!-- Firebase SDK v9 Compat -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --primary: #667eea;
+            --primary-dark: #5a67d8;
+            --secondary: #48bb78;
+            --danger: #f56565;
+            --warning: #ed8936;
+            --dark: #2d3748;
+            --light: #f7fafc;
+            --gray: #718096;
+            --border: #e2e8f0;
+            --shadow: 0 10px 30px rgba(0,0,0,0.1);
+            --shadow-sm: 0 2px 10px rgba(0,0,0,0.05);
+            --mobile-nav-height: 60px;
+            --mobile-bottom-nav: 70px;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: var(--dark);
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Initial Setup Screen */
+        .setup-screen {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 5000;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .setup-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            margin: 50px auto;
+            box-shadow: var(--shadow);
+            animation: slideIn 0.5s;
+        }
+
+        .setup-card h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .setup-option {
+            background: var(--light);
+            border: 2px solid var(--border);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 15px 0;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .setup-option:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .setup-option.selected {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        }
+
+        .setup-info {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            font-size: 0.9rem;
+        }
+
+        /* Mobile Header */
+        .mobile-header {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: var(--mobile-nav-height);
+            background: white;
+            box-shadow: var(--shadow-sm);
+            z-index: 1000;
+            padding: 0 15px;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .mobile-menu-btn {
+            width: 35px;
+            height: 35px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 4px;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+
+        .mobile-menu-btn span {
+            width: 25px;
+            height: 3px;
+            background: var(--dark);
+            border-radius: 2px;
+            transition: all 0.3s;
+        }
+
+        .mobile-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Mobile Bottom Navigation */
+        .mobile-bottom-nav {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: var(--mobile-bottom-nav);
+            background: white;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            z-index: 999;
+        }
+
+        .mobile-nav-items {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            height: 100%;
+            padding: 0 10px;
+        }
+
+        .mobile-nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-radius: 10px;
+        }
+
+        .mobile-nav-item.active {
+            background: rgba(102, 126, 234, 0.1);
+            color: var(--primary);
+        }
+
+        .mobile-nav-icon {
+            font-size: 1.5rem;
+            margin-bottom: 4px;
+        }
+
+        .mobile-nav-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        /* Desktop Header */
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: var(--shadow);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .cloud-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 15px;
+            background: var(--light);
+            border-radius: 10px;
+            font-size: 0.9rem;
+        }
+
+        .cloud-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--gray);
+        }
+
+        .cloud-indicator.connected {
+            background: var(--secondary);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .subject-selector {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .subject-dropdown {
+            padding: 12px 20px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+        }
+
+        .subject-dropdown:hover {
+            border-color: var(--primary);
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .btn-icon {
+            padding: 10px;
+            min-width: auto;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .btn-secondary {
+            background: var(--secondary);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-google {
+            background: white;
+            color: var(--dark);
+            border: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 30px;
+        }
+
+        .sidebar {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+        }
+
+        .nav-item {
+            padding: 15px 20px;
+            margin: 10px 0;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-item:hover {
+            background: var(--light);
+            transform: translateX(5px);
+        }
+
+        .nav-item.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .content-area {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: var(--shadow);
+            min-height: 600px;
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .study-plan-item {
+            background: var(--light);
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .study-plan-item:hover {
+            transform: translateX(5px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .study-plan-item.completed {
+            background: #c6f6d5;
+            text-decoration: line-through;
+        }
+
+        .study-plan-content {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .study-plan-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .timer-display {
+            font-size: 5rem;
+            font-weight: bold;
+            text-align: center;
+            margin: 40px 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .timer-controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+
+        .progress-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 15px;
+            padding: 25px;
+            margin: 20px 0;
+            color: white;
+        }
+
+        .progress-bar {
+            background: rgba(255,255,255,0.3);
+            height: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+
+        .progress-fill {
+            background: white;
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.5s;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            animation: fadeIn 0.3s;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            margin: 50px auto;
+            position: relative;
+            animation: slideIn 0.3s;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 30px;
+            cursor: pointer;
+            color: var(--gray);
+        }
+
+        .input-group {
+            margin: 20px 0;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .input-group input, .input-group textarea, .input-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+
+        .input-group input:focus, .input-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .ai-chat-button {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            transition: all 0.3s;
+            z-index: 900;
+        }
+
+        .ai-chat-button:hover {
+            transform: scale(1.1);
+        }
+
+        .ai-chat-popup {
+            position: fixed;
+            bottom: 100px;
+            right: 30px;
+            width: 400px;
+            max-width: calc(100vw - 40px);
+            height: 500px;
+            max-height: 60vh;
+            background: white;
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            display: none;
+            flex-direction: column;
+            z-index: 999;
+        }
+
+        .ai-chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 20px 20px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .ai-chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .ai-message {
+            margin: 10px 0;
+            padding: 12px 15px;
+            border-radius: 15px;
+            max-width: 80%;
+            animation: fadeIn 0.3s;
+            word-wrap: break-word;
+        }
+
+        .ai-message.user {
+            background: var(--primary);
+            color: white;
+            margin-left: auto;
+        }
+
+        .ai-message.bot {
+            background: var(--light);
+            color: var(--dark);
+        }
+
+        .ai-chat-input {
+            padding: 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 10px;
+        }
+
+        .ai-chat-input input {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .calendar-widget {
+            background: var(--light);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .exam-item {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 10px;
+            border-left: 4px solid var(--primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--secondary);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            display: none;
+            animation: slideInRight 0.3s;
+            z-index: 3000;
+            max-width: calc(100vw - 40px);
+        }
+
+        @keyframes slideInRight {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 30px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(30px);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--gray);
+        }
+
+        .empty-state svg {
+            width: 150px;
+            height: 150px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c00;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-size: 0.9rem;
+        }
+
+        /* Mobile Styles */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0;
+                padding-top: var(--mobile-nav-height);
+                padding-bottom: var(--mobile-bottom-nav);
+            }
+
+            .mobile-header {
+                display: flex;
+            }
+
+            .mobile-bottom-nav {
+                display: block;
+            }
+
+            .header {
+                display: none;
+            }
+
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 0;
+            }
+            
+            .sidebar {
+                display: none;
+            }
+            
+            .content-area {
+                border-radius: 0;
+                padding: 15px;
+                min-height: calc(100vh - var(--mobile-nav-height) - var(--mobile-bottom-nav));
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .timer-display {
+                font-size: 4rem;
+                margin: 30px 0;
+            }
+
+            .ai-chat-button {
+                bottom: calc(var(--mobile-bottom-nav) + 20px);
+                right: 20px;
+                width: 50px;
+                height: 50px;
+            }
+
+            .ai-chat-popup {
+                bottom: calc(var(--mobile-bottom-nav) + 80px);
+                right: 20px;
+                left: 20px;
+                width: calc(100vw - 40px);
+                height: 50vh;
+            }
+
+            .input-group input, .input-group textarea, .input-group select {
+                font-size: 16px;
+            }
+
+            .mobile-subject-selector {
+                background: white;
+                padding: 15px;
+                margin: 0 -15px 20px -15px;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .mobile-subject-controls {
+                display: flex;
+                gap: 10px;
+                align-items: center;
+            }
+
+            .mobile-subject-controls .subject-dropdown {
+                flex: 1;
+                padding: 10px;
+            }
+
+            .notification {
+                top: calc(var(--mobile-nav-height) + 10px);
+                right: 10px;
+                left: 10px;
+                width: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Initial Setup Screen -->
+    <div class="setup-screen" id="setupScreen">
+        <div class="setup-card">
+            <h1>🎓 Benvenuto in StudyMaster Pro</h1>
+            <p style="text-align: center; margin-bottom: 30px; color: var(--gray);">
+                Scegli come vuoi salvare i tuoi dati:
+            </p>
+            
+            <div class="setup-info">
+                ⚠️ <strong>Importante per Firebase:</strong><br>
+                Se scegli Cloud Sync, devi prima:<br>
+                1. Andare su Firebase Console<br>
+                2. Authentication → Sign-in method<br>
+                3. Abilitare Google<br>
+                4. Aggiungere il tuo dominio agli autorizzati
+            </div>
+            
+            <div class="setup-option" onclick="selectStorageOption('firebase')">
+                <h3>☁️ Cloud Sync (Consigliato)</h3>
+                <p>Sincronizza automaticamente i tuoi dati tra tutti i dispositivi. Richiede configurazione Firebase.</p>
+            </div>
+            
+            <div class="setup-option" onclick="selectStorageOption('local')">
+                <h3>💾 Solo Locale</h3>
+                <p>Salva i dati solo su questo dispositivo. Puoi esportare e importare manualmente i backup.</p>
+            </div>
+            
+            <button class="btn btn-primary" onclick="completeSetup()" style="width: 100%; margin-top: 30px; display: none;" id="setupBtn">
+                Inizia 🚀
+            </button>
+        </div>
+    </div>
+
+    <!-- Mobile Header -->
+    <div class="mobile-header">
+        <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+        <div class="mobile-title">📚 StudyMaster</div>
+        <button class="btn btn-icon btn-primary" onclick="syncData()">☁️</button>
+    </div>
+
+    <div class="container">
+        <!-- Desktop Header -->
+        <div class="header">
+            <h1>📚 StudyMaster Pro</h1>
+            <div class="header-controls">
+                <div class="cloud-status">
+                    <div class="cloud-indicator" id="cloudIndicator"></div>
+                    <span id="cloudStatusText">Offline</span>
+                </div>
+                <button class="btn btn-google" onclick="handleAuth()" id="authBtn">
+                    <span id="authBtnText">Accedi</span>
+                </button>
+                <div class="subject-selector">
+                    <select id="subjectSelect" class="subject-dropdown">
+                        <option value="">Seleziona Materia</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="openNewSubjectModal()">+ Nuova Materia</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Sidebar Navigation (Desktop) -->
+            <div class="sidebar">
+                <div class="nav-item active" onclick="showSection('dashboard')">
+                    <span class="nav-icon">📊</span>
+                    Dashboard
+                </div>
+                <div class="nav-item" onclick="showSection('studyPlan')">
+                    <span class="nav-icon">📝</span>
+                    Piano di Studio
+                </div>
+                <div class="nav-item" onclick="showSection('timer')">
+                    <span class="nav-icon">⏱️</span>
+                    Timer Studio
+                </div>
+                <div class="nav-item" onclick="showSection('progress')">
+                    <span class="nav-icon">📈</span>
+                    Progressi
+                </div>
+                <div class="nav-item" onclick="showSection('calendar')">
+                    <span class="nav-icon">📅</span>
+                    Calendario
+                </div>
+                <div class="nav-item" onclick="showSection('settings')">
+                    <span class="nav-icon">⚙️</span>
+                    Impostazioni
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Mobile Subject Selector -->
+                <div class="mobile-subject-selector" style="display: none;">
+                    <div class="mobile-subject-controls">
+                        <select id="mobileSubjectSelect" class="subject-dropdown">
+                            <option value="">Seleziona Materia</option>
+                        </select>
+                        <button class="btn btn-primary btn-icon" onclick="openNewSubjectModal()">+</button>
+                    </div>
+                </div>
+
+                <!-- Dashboard Section -->
+                <div id="dashboard" class="section active">
+                    <h2>Dashboard</h2>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div>Ore Totali Studiate</div>
+                            <div class="stat-number" id="totalHours">0</div>
+                            <div>questa settimana</div>
+                        </div>
+                        <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                            <div>Obiettivi Completati</div>
+                            <div class="stat-number" id="completedGoals">0</div>
+                            <div>su <span id="totalGoals">0</span></div>
+                        </div>
+                        <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                            <div>Sessioni di Studio</div>
+                            <div class="stat-number" id="studySessions">0</div>
+                            <div>oggi</div>
+                        </div>
+                    </div>
+                    
+                    <h3 style="margin-top: 40px;">Prossimi Esami</h3>
+                    <div class="calendar-widget">
+                        <div id="upcomingExams">
+                            <div class="empty-state">
+                                <p>Nessun esame programmato</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Study Plan Section -->
+                <div id="studyPlan" class="section">
+                    <h2>Piano di Studio</h2>
+                    <button class="btn btn-primary" onclick="addStudyItem()">+ Aggiungi Attività</button>
+                    
+                    <div id="studyPlanList" style="margin-top: 30px;">
+                        <div class="empty-state">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            </svg>
+                            <h3>Nessun piano di studio</h3>
+                            <p>Inizia aggiungendo la tua prima attività di studio</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timer Section -->
+                <div id="timer" class="section">
+                    <h2>Timer Pomodoro</h2>
+                    
+                    <div class="timer-display" id="timerDisplay">25:00</div>
+                    
+                    <div style="text-align: center; margin: 20px 0;">
+                        <h3 id="timerStatus">Pronto per iniziare</h3>
+                        <p id="timerPhase" style="color: var(--gray);">Sessione di studio</p>
+                    </div>
+                    
+                    <div class="timer-controls">
+                        <button class="btn btn-primary" onclick="startTimer()">▶️ Inizia</button>
+                        <button class="btn btn-secondary" onclick="pauseTimer()">⏸️ Pausa</button>
+                        <button class="btn btn-danger" onclick="resetTimer()">🔄 Reset</button>
+                    </div>
+                    
+                    <div style="margin-top: 40px;">
+                        <h3>Configurazione Timer</h3>
+                        <div class="input-group">
+                            <label>Durata Studio (minuti)</label>
+                            <input type="number" id="studyDuration" value="25" min="1" max="60">
+                        </div>
+                        <div class="input-group">
+                            <label>Durata Pausa Breve (minuti)</label>
+                            <input type="number" id="shortBreak" value="5" min="1" max="30">
+                        </div>
+                        <div class="input-group">
+                            <label>Durata Pausa Lunga (minuti)</label>
+                            <input type="number" id="longBreak" value="15" min="1" max="60">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Progress Section -->
+                <div id="progress" class="section">
+                    <h2>I tuoi Progressi</h2>
+                    
+                    <div class="progress-card">
+                        <h3>Progresso Generale</h3>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="overallProgress" style="width: 0%"></div>
+                        </div>
+                        <p>Completato: <span id="progressPercentage">0</span>%</p>
+                    </div>
+                    
+                    <div style="margin-top: 30px;">
+                        <h3>Aggiungi Progresso</h3>
+                        <div class="input-group">
+                            <label>Argomento Studiato</label>
+                            <input type="text" id="progressTopic" placeholder="Es. Capitolo 5 - Analisi Matematica">
+                        </div>
+                        <div class="input-group">
+                            <label>Tempo Dedicato (minuti)</label>
+                            <input type="number" id="progressTime" placeholder="60">
+                        </div>
+                        <div class="input-group">
+                            <label>Note</label>
+                            <textarea id="progressNotes" rows="3" placeholder="Aggiungi note sul tuo studio..."></textarea>
+                        </div>
+                        <button class="btn btn-primary" onclick="addProgress()">Salva Progresso</button>
+                    </div>
+                    
+                    <div style="margin-top: 30px;">
+                        <h3>Storico Progressi</h3>
+                        <div id="progressHistory">
+                            <div class="empty-state">
+                                <p>Nessun progresso registrato</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Calendar Section -->
+                <div id="calendar" class="section">
+                    <h2>Calendario Esami</h2>
+                    
+                    <button class="btn btn-primary" onclick="addExam()">+ Aggiungi Esame</button>
+                    
+                    <div id="examsList" style="margin-top: 30px;">
+                        <div class="empty-state">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <h3>Nessun esame programmato</h3>
+                            <p>Aggiungi i tuoi esami per tenerli sotto controllo</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Section -->
+                <div id="settings" class="section">
+                    <h2>Impostazioni</h2>
+                    
+                    <div style="background: var(--light); padding: 20px; border-radius: 15px; margin: 20px 0;">
+                        <h3>Account Cloud</h3>
+                        <div id="accountInfo" style="margin: 20px 0;">
+                            <p id="accountStatus">Non connesso</p>
+                        </div>
+                        <div id="authError" class="error-message" style="display: none;"></div>
+                        <button class="btn btn-google" onclick="handleAuth()" id="settingsAuthBtn" style="justify-content: center;">
+                            <span id="settingsAuthBtnText">Connetti Account</span>
+                        </button>
+                    </div>
+                    
+                    <div style="background: var(--light); padding: 20px; border-radius: 15px; margin: 20px 0;">
+                        <h3>Configurazione AI Assistant</h3>
+                        <div class="input-group">
+                            <label>API Key Gemini (Opzionale)</label>
+                            <input type="password" id="geminiApiKey" placeholder="Inserisci la tua API Key">
+                        </div>
+                        <button class="btn btn-primary" onclick="saveApiKey()">Salva API Key</button>
+                    </div>
+                    
+                    <div style="background: var(--light); padding: 20px; border-radius: 15px; margin: 20px 0;">
+                        <h3>Gestione Dati</h3>
+                        <button class="btn btn-secondary" onclick="exportData()">📥 Esporta Dati</button>
+                        <button class="btn btn-secondary" onclick="importData()" style="margin-left: 10px;">📤 Importa Dati</button>
+                        <button class="btn btn-danger" onclick="clearAllData()" style="margin-left: 10px;">🗑️ Cancella Tutto</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Bottom Navigation -->
+    <div class="mobile-bottom-nav">
+        <div class="mobile-nav-items">
+            <div class="mobile-nav-item active" onclick="showSectionMobile('dashboard', this)">
+                <span class="mobile-nav-icon">📊</span>
+                <span class="mobile-nav-label">Dashboard</span>
+            </div>
+            <div class="mobile-nav-item" onclick="showSectionMobile('studyPlan', this)">
+                <span class="mobile-nav-icon">📝</span>
+                <span class="mobile-nav-label">Piano</span>
+            </div>
+            <div class="mobile-nav-item" onclick="showSectionMobile('timer', this)">
+                <span class="mobile-nav-icon">⏱️</span>
+                <span class="mobile-nav-label">Timer</span>
+            </div>
+            <div class="mobile-nav-item" onclick="showSectionMobile('progress', this)">
+                <span class="mobile-nav-icon">📈</span>
+                <span class="mobile-nav-label">Progressi</span>
+            </div>
+            <div class="mobile-nav-item" onclick="showSectionMobile('calendar', this)">
+                <span class="mobile-nav-icon">📅</span>
+                <span class="mobile-nav-label">Esami</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Chat Button -->
+    <div class="ai-chat-button" onclick="toggleAIChat()">
+        🤖
+    </div>
+
+    <!-- AI Chat Popup -->
+    <div class="ai-chat-popup" id="aiChatPopup">
+        <div class="ai-chat-header">
+            <h3>🤖 AI Study Assistant</h3>
+            <span style="cursor: pointer; font-size: 1.5rem;" onclick="toggleAIChat()">✖</span>
+        </div>
+        <div class="ai-chat-messages" id="aiChatMessages">
+            <div class="ai-message bot">
+                Ciao! Sono il tuo assistente AI per lo studio. Come posso aiutarti oggi?
+            </div>
+        </div>
+        <div class="ai-chat-input">
+            <input type="text" id="aiChatInput" placeholder="Scrivi un messaggio..." onkeypress="if(event.key==='Enter') sendAIMessage()">
+            <button class="btn btn-primary btn-icon" onclick="sendAIMessage()">➤</button>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- New Subject Modal -->
+    <div class="modal" id="newSubjectModal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('newSubjectModal')">×</span>
+            <h2>Aggiungi Nuova Materia</h2>
+            <div class="input-group">
+                <label>Nome Materia</label>
+                <input type="text" id="subjectName" placeholder="Es. Analisi Matematica">
+            </div>
+            <div class="input-group">
+                <label>Professore</label>
+                <input type="text" id="subjectProfessor" placeholder="Es. Prof. Rossi">
+            </div>
+            <div class="input-group">
+                <label>CFU</label>
+                <input type="number" id="subjectCFU" placeholder="6">
+            </div>
+            <div class="input-group">
+                <label>Colore</label>
+                <input type="color" id="subjectColor" value="#667eea">
+            </div>
+            <button class="btn btn-primary" onclick="saveNewSubject()">Salva Materia</button>
+        </div>
+    </div>
+
+    <!-- Study Item Modal -->
+    <div class="modal" id="studyItemModal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('studyItemModal')">×</span>
+            <h2>Aggiungi Attività di Studio</h2>
+            <div class="input-group">
+                <label>Titolo</label>
+                <input type="text" id="studyItemTitle" placeholder="Es. Ripassare Capitolo 3">
+            </div>
+            <div class="input-group">
+                <label>Descrizione</label>
+                <textarea id="studyItemDescription" rows="3" placeholder="Dettagli sull'attività..."></textarea>
+            </div>
+            <div class="input-group">
+                <label>Priorità</label>
+                <select id="studyItemPriority">
+                    <option value="low">Bassa</option>
+                    <option value="medium">Media</option>
+                    <option value="high">Alta</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Scadenza</label>
+                <input type="date" id="studyItemDeadline">
+            </div>
+            <button class="btn btn-primary" onclick="saveStudyItem()">Salva Attività</button>
+        </div>
+    </div>
+
+    <!-- Exam Modal -->
+    <div class="modal" id="examModal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('examModal')">×</span>
+            <h2>Aggiungi Esame</h2>
+            <div class="input-group">
+                <label>Nome Esame</label>
+                <input type="text" id="examName" placeholder="Es. Esame di Analisi">
+            </div>
+            <div class="input-group">
+                <label>Data</label>
+                <input type="date" id="examDate">
+            </div>
+            <div class="input-group">
+                <label>Ora</label>
+                <input type="time" id="examTime">
+            </div>
+            <div class="input-group">
+                <label>Aula</label>
+                <input type="text" id="examRoom" placeholder="Es. Aula 101">
+            </div>
+            <button class="btn btn-primary" onclick="saveExam()">Salva Esame</button>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div class="notification" id="notification"></div>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBTnIxHKZaT9SFX_V5_hTe53AQrzAwODeA",
+            authDomain: "studymaster-pro.firebaseapp.com",
+            projectId: "studymaster-pro",
+            storageBucket: "studymaster-pro.firebasestorage.app",
+            messagingSenderId: "111357420043",
+            appId: "1:111357420043:web:8e4f693590eab90adfdd0e"
+        };
+
+        // Initialize Firebase
+        let firebaseApp = null;
+        let auth = null;
+        let db = null;
+
+        // App State
+        let app = {
+            storageMode: null,
+            user: null,
+            data: {
+                subjects: [],
+                currentSubject: null,
+                studyPlans: {},
+                progress: {},
+                exams: {},
+                settings: {
+                    geminiApiKey: '',
+                    autoSync: true,
+                    timerSounds: true
+                },
+                timerData: {
+                    minutes: 25,
+                    seconds: 0,
+                    isRunning: false,
+                    currentPhase: 'study',
+                    sessionCount: 0
+                }
+            }
+        };
+
+        let timerInterval = null;
+
+        // Initialize App
+        function initApp() {
+            console.log('Initializing app...');
+            const savedMode = localStorage.getItem('storageMode');
+            
+            if (savedMode) {
+                app.storageMode = savedMode;
+                if (savedMode === 'firebase') {
+                    console.log('Firebase mode detected, initializing...');
+                    initFirebase();
+                } else {
+                    console.log('Local mode detected');
+                    loadLocalData();
+                    hideSetupScreen();
+                }
+            } else {
+                console.log('No storage mode set, showing setup screen');
+                showSetupScreen();
+            }
+            
+            checkMobileView();
+        }
+
+        // Setup Functions
+        function showSetupScreen() {
+            document.getElementById('setupScreen').style.display = 'block';
+        }
+
+        function hideSetupScreen() {
+            document.getElementById('setupScreen').style.display = 'none';
+        }
+
+        function selectStorageOption(option) {
+            document.querySelectorAll('.setup-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            event.target.closest('.setup-option').classList.add('selected');
+            app.storageMode = option;
+            document.getElementById('setupBtn').style.display = 'block';
+        }
+
+        function completeSetup() {
+            localStorage.setItem('storageMode', app.storageMode);
+            hideSetupScreen();
+            
+            if (app.storageMode === 'firebase') {
+                initFirebase();
+            } else {
+                loadLocalData();
+            }
+        }
+
+        // Firebase Functions
+        function initFirebase() {
+            try {
+                console.log('Initializing Firebase...');
+                
+                if (!firebase.apps.length) {
+                    firebaseApp = firebase.initializeApp(firebaseConfig);
+                } else {
+                    firebaseApp = firebase.app();
+                }
+                
+                auth = firebase.auth();
+                db = firebase.firestore();
+                
+                // Set persistence
+                auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+                
+                // Auth state listener
+                auth.onAuthStateChanged((user) => {
+                    console.log('Auth state changed:', user ? user.email : 'No user');
+                    if (user) {
+                        app.user = user;
+                        updateAuthUI();
+                        loadFirebaseData();
+                    } else {
+                        app.user = null;
+                        updateAuthUI();
+                    }
+                });
+                
+                console.log('Firebase initialized successfully');
+            } catch (error) {
+                console.error('Firebase initialization error:', error);
+                showError('Errore inizializzazione Firebase: ' + error.message);
+                // Fallback to local storage
+                app.storageMode = 'local';
+                localStorage.setItem('storageMode', 'local');
+                loadLocalData();
+            }
+        }
+
+        // Authentication Functions
+        async function handleAuth() {
+            if (app.user) {
+                signOut();
+            } else {
+                signInWithGoogle();
+            }
+        }
+
+        async function signInWithGoogle() {
+            if (app.storageMode !== 'firebase') {
+                showNotification('Abilita prima Cloud Sync nelle impostazioni', 'error');
+                return;
+            }
+            
+            try {
+                console.log('Starting Google sign in...');
+                const provider = new firebase.auth.GoogleAuthProvider();
+                provider.addScope('profile');
+                provider.addScope('email');
+                
+                // Try popup first
+                try {
+                    const result = await auth.signInWithPopup(provider);
+                    console.log('Sign in successful:', result.user.email);
+                    app.user = result.user;
+                    updateAuthUI();
+                    await loadFirebaseData();
+                    showNotification(`Benvenuto ${result.user.displayName}!`, 'success');
+                } catch (popupError) {
+                    console.log('Popup blocked, trying redirect...', popupError);
+                    // If popup is blocked, try redirect
+                    await auth.signInWithRedirect(provider);
+                }
+                
+            } catch (error) {
+                console.error('Sign in error:', error);
+                showError('Errore accesso: ' + error.message);
+                
+                // Show specific error messages
+                if (error.code === 'auth/popup-blocked') {
+                    showNotification('Popup bloccato. Abilita i popup per questo sito.', 'error');
+                } else if (error.code === 'auth/unauthorized-domain') {
+                    showNotification('Dominio non autorizzato. Aggiungilo su Firebase Console.', 'error');
+                } else {
+                    showNotification('Errore durante l\'accesso: ' + error.message, 'error');
+                }
+            }
+        }
+
+        async function signOut() {
+            try {
+                await auth.signOut();
+                app.user = null;
+                updateAuthUI();
+                showNotification('Disconnesso con successo', 'success');
+            } catch (error) {
+                console.error('Sign out error:', error);
+                showNotification('Errore durante la disconnessione', 'error');
+            }
+        }
+
+        function updateAuthUI() {
+            const indicator = document.getElementById('cloudIndicator');
+            const statusText = document.getElementById('cloudStatusText');
+            const authBtn = document.getElementById('authBtn');
+            const authBtnText = document.getElementById('authBtnText');
+            const accountStatus = document.getElementById('accountStatus');
+            const settingsAuthBtn = document.getElementById('settingsAuthBtn');
+            const settingsAuthBtnText = document.getElementById('settingsAuthBtnText');
+            
+            if (app.user) {
+                indicator.classList.add('connected');
+                statusText.textContent = 'Sincronizzato';
+                authBtnText.textContent = app.user.email.split('@')[0];
+                accountStatus.textContent = `Connesso come: ${app.user.email}`;
+                settingsAuthBtnText.textContent = 'Disconnetti';
+            } else {
+                indicator.classList.remove('connected');
+                statusText.textContent = app.storageMode === 'local' ? 'Locale' : 'Offline';
+                authBtnText.textContent = 'Accedi';
+                accountStatus.textContent = app.storageMode === 'local' ? 'Modalità locale' : 'Non connesso';
+                settingsAuthBtnText.textContent = 'Connetti Account';
+            }
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('authError');
+            if (errorDiv) {
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+                setTimeout(() => {
+                    errorDiv.style.display = 'none';
+                }, 5000);
+            }
+        }
+
+        // Data Functions
+        async function saveData() {
+            if (app.storageMode === 'firebase' && app.user && db) {
+                try {
+                    await db.collection('users').doc(app.user.uid).set({
+                        data: app.data,
+                        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    console.log('Data saved to Firebase');
+                } catch (error) {
+                    console.error('Save error:', error);
+                    // Fallback to local storage
+                    localStorage.setItem('studyMasterData', JSON.stringify(app.data));
+                }
+            } else {
+                localStorage.setItem('studyMasterData', JSON.stringify(app.data));
+                console.log('Data saved locally');
+            }
+        }
+
+        async function loadFirebaseData() {
+            if (!app.user || !db) return;
+            
+            try {
+                const doc = await db.collection('users').doc(app.user.uid).get();
+                if (doc.exists) {
+                    app.data = doc.data().data;
+                    updateUI();
+                    console.log('Data loaded from Firebase');
+                } else {
+                    // First time user, create document
+                    await saveData();
+                    console.log('Created new user document');
+                }
+            } catch (error) {
+                console.error('Load error:', error);
+                showNotification('Errore caricamento dati', 'error');
+            }
+        }
+
+        function loadLocalData() {
+            const saved = localStorage.getItem('studyMasterData');
+            if (saved) {
+                app.data = JSON.parse(saved);
+                console.log('Data loaded from local storage');
+            }
+            updateUI();
+        }
+
+        async function syncData() {
+            if (app.storageMode === 'firebase' && app.user) {
+                await saveData();
+                await loadFirebaseData();
+                showNotification('Dati sincronizzati', 'success');
+            } else {
+                showNotification('Accedi per sincronizzare', 'info');
+            }
+        }
+
+        function exportData() {
+            const dataStr = JSON.stringify(app.data, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'studymaster_backup.json';
+            link.click();
+            showNotification('Dati esportati', 'success');
+        }
+
+        function importData() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = e => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = event => {
+                    try {
+                        app.data = JSON.parse(event.target.result);
+                        saveData();
+                        updateUI();
+                        showNotification('Dati importati', 'success');
+                    } catch (error) {
+                        showNotification('Errore importazione', 'error');
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+
+        function clearAllData() {
+            if (confirm('Cancellare tutti i dati?')) {
+                app.data = {
+                    subjects: [],
+                    currentSubject: null,
+                    studyPlans: {},
+                    progress: {},
+                    exams: {},
+                    settings: {
+                        geminiApiKey: '',
+                        autoSync: true,
+                        timerSounds: true
+                    },
+                    timerData: {
+                        minutes: 25,
+                        seconds: 0,
+                        isRunning: false,
+                        currentPhase: 'study',
+                        sessionCount: 0
+                    }
+                };
+                saveData();
+                updateUI();
+                showNotification('Dati cancellati', 'success');
+            }
+        }
+
+        // UI Functions
+        function updateUI() {
+            updateSubjectDropdown();
+            updateDashboard();
+            updateStudyPlan();
+            updateProgress();
+            updateCalendar();
+        }
+
+        function checkMobileView() {
+            const isMobile = window.innerWidth <= 768;
+            const mobileSelector = document.querySelector('.mobile-subject-selector');
+            if (isMobile && mobileSelector) {
+                mobileSelector.style.display = 'block';
+                syncMobileSubjectSelector();
+            } else if (mobileSelector) {
+                mobileSelector.style.display = 'none';
+            }
+        }
+
+        function syncMobileSubjectSelector() {
+            const mobileSelect = document.getElementById('mobileSubjectSelect');
+            const desktopSelect = document.getElementById('subjectSelect');
+            
+            if (mobileSelect && desktopSelect) {
+                mobileSelect.innerHTML = desktopSelect.innerHTML;
+                mobileSelect.value = desktopSelect.value;
+                
+                mobileSelect.onchange = function() {
+                    desktopSelect.value = this.value;
+                    app.data.currentSubject = this.value;
+                    saveData();
+                    updateUI();
+                };
+            }
+        }
+
+        // Rest of your functions remain the same...
+        // (updateSubjectDropdown, updateDashboard, etc.)
+        
+        function updateSubjectDropdown() {
+            const select = document.getElementById('subjectSelect');
+            const mobileSelect = document.getElementById('mobileSubjectSelect');
+            
+            const options = '<option value="">Seleziona Materia</option>' + 
+                (app.data.subjects || []).map(subject => 
+                    `<option value="${subject.id}">${subject.name}</option>`
+                ).join('');
+            
+            select.innerHTML = options;
+            if (mobileSelect) {
+                mobileSelect.innerHTML = options;
+            }
+            
+            if (app.data.currentSubject) {
+                select.value = app.data.currentSubject;
+                if (mobileSelect) {
+                    mobileSelect.value = app.data.currentSubject;
+                }
+            }
+        }
+
+        function updateDashboard() {
+            let totalHours = 0;
+            let completedGoals = 0;
+            let totalGoals = 0;
+            let todaySessions = 0;
+            
+            if (app.data.currentSubject && app.data.progress[app.data.currentSubject]) {
+                app.data.progress[app.data.currentSubject].forEach(p => {
+                    totalHours += p.time / 60;
+                    if (new Date(p.date).toDateString() === new Date().toDateString()) {
+                        todaySessions++;
+                    }
+                });
+            }
+            
+            if (app.data.currentSubject && app.data.studyPlans[app.data.currentSubject]) {
+                totalGoals = app.data.studyPlans[app.data.currentSubject].length;
+                completedGoals = app.data.studyPlans[app.data.currentSubject].filter(item => item.completed).length;
+            }
+            
+            document.getElementById('totalHours').textContent = totalHours.toFixed(1);
+            document.getElementById('completedGoals').textContent = completedGoals;
+            document.getElementById('totalGoals').textContent = totalGoals;
+            document.getElementById('studySessions').textContent = todaySessions;
+            
+            updateUpcomingExams();
+        }
+
+        function updateUpcomingExams() {
+            const container = document.getElementById('upcomingExams');
+            
+            if (!app.data.currentSubject || !app.data.exams[app.data.currentSubject] || app.data.exams[app.data.currentSubject].length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>Nessun esame programmato</p></div>';
+                return;
+            }
+            
+            const exams = app.data.exams[app.data.currentSubject]
+                .sort((a, b) => new Date(a.date) - new Date(b.date))
+                .slice(0, 3);
+            
+            container.innerHTML = exams.map(exam => `
+                <div class="exam-item">
+                    <div>
+                        <strong>${exam.name}</strong>
+                        <p style="color: var(--gray); margin-top: 5px;">${exam.room || 'Aula da definire'}</p>
+                    </div>
+                    <div style="text-align: right;">
+                        <strong>${new Date(exam.date).toLocaleDateString('it-IT')}</strong>
+                        <p style="color: var(--gray); margin-top: 5px;">${exam.time || 'Orario da definire'}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Subject Functions
+        function openNewSubjectModal() {
+            document.getElementById('newSubjectModal').style.display = 'block';
+        }
+
+        function saveNewSubject() {
+            const name = document.getElementById('subjectName').value;
+            const professor = document.getElementById('subjectProfessor').value;
+            const cfu = document.getElementById('subjectCFU').value;
+            const color = document.getElementById('subjectColor').value;
+            
+            if (!name) {
+                showNotification('Inserisci il nome della materia', 'error');
+                return;
+            }
+            
+            const subject = {
+                id: Date.now().toString(),
+                name,
+                professor,
+                cfu,
+                color,
+                createdAt: new Date().toISOString()
+            };
+            
+            if (!app.data.subjects) app.data.subjects = [];
+            app.data.subjects.push(subject);
+            app.data.studyPlans[subject.id] = [];
+            app.data.progress[subject.id] = [];
+            app.data.exams[subject.id] = [];
+            
+            saveData();
+            updateSubjectDropdown();
+            closeModal('newSubjectModal');
+            showNotification('Materia aggiunta', 'success');
+            
+            document.getElementById('subjectName').value = '';
+            document.getElementById('subjectProfessor').value = '';
+            document.getElementById('subjectCFU').value = '';
+            document.getElementById('subjectColor').value = '#667eea';
+        }
+
+        document.getElementById('subjectSelect').addEventListener('change', function() {
+            app.data.currentSubject = this.value;
+            saveData();
+            updateUI();
+        });
+
+        // Study Plan Functions
+        function addStudyItem() {
+            if (!app.data.currentSubject) {
+                showNotification('Seleziona prima una materia', 'error');
+                return;
+            }
+            document.getElementById('studyItemModal').style.display = 'block';
+        }
+
+        function saveStudyItem() {
+            const title = document.getElementById('studyItemTitle').value;
+            const description = document.getElementById('studyItemDescription').value;
+            const priority = document.getElementById('studyItemPriority').value;
+            const deadline = document.getElementById('studyItemDeadline').value;
+            
+            if (!title) {
+                showNotification('Inserisci un titolo', 'error');
+                return;
+            }
+            
+            const item = {
+                id: Date.now().toString(),
+                title,
+                description,
+                priority,
+                deadline,
+                completed: false,
+                createdAt: new Date().toISOString()
+            };
+            
+            if (!app.data.studyPlans[app.data.currentSubject]) {
+                app.data.studyPlans[app.data.currentSubject] = [];
+            }
+            
+            app.data.studyPlans[app.data.currentSubject].push(item);
+            saveData();
+            updateStudyPlan();
+            closeModal('studyItemModal');
+            showNotification('Attività aggiunta', 'success');
+            
+            document.getElementById('studyItemTitle').value = '';
+            document.getElementById('studyItemDescription').value = '';
+            document.getElementById('studyItemPriority').value = 'medium';
+            document.getElementById('studyItemDeadline').value = '';
+        }
+
+        function updateStudyPlan() {
+            const container = document.getElementById('studyPlanList');
+            
+            if (!app.data.currentSubject || !app.data.studyPlans[app.data.currentSubject] || app.data.studyPlans[app.data.currentSubject].length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        <h3>Nessun piano di studio</h3>
+                        <p>Inizia aggiungendo la tua prima attività di studio</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const items = app.data.studyPlans[app.data.currentSubject];
+            container.innerHTML = items.map(item => `
+                <div class="study-plan-item ${item.completed ? 'completed' : ''}">
+                    <div class="study-plan-content">
+                        <h4>${item.title}</h4>
+                        <p style="color: var(--gray); margin-top: 5px;">${item.description}</p>
+                        <span style="background: ${getPriorityColor(item.priority)}; color: white; padding: 3px 10px; border-radius: 5px; font-size: 0.8rem;">
+                            ${item.priority.toUpperCase()}
+                        </span>
+                    </div>
+                    <div class="study-plan-actions">
+                        ${item.deadline ? `<span style="color: var(--gray);">📅 ${new Date(item.deadline).toLocaleDateString('it-IT')}</span>` : ''}
+                        <button class="btn btn-icon ${item.completed ? 'btn-secondary' : 'btn-primary'}" onclick="toggleStudyItem('${item.id}')">
+                            ${item.completed ? '↩️' : '✓'}
+                        </button>
+                        <button class="btn btn-icon btn-danger" onclick="deleteStudyItem('${item.id}')">🗑️</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function toggleStudyItem(itemId) {
+            const item = app.data.studyPlans[app.data.currentSubject].find(i => i.id === itemId);
+            if (item) {
+                item.completed = !item.completed;
+                saveData();
+                updateStudyPlan();
+                updateDashboard();
+            }
+        }
+
+        function deleteStudyItem(itemId) {
+            if (confirm('Eliminare questa attività?')) {
+                app.data.studyPlans[app.data.currentSubject] = app.data.studyPlans[app.data.currentSubject].filter(i => i.id !== itemId);
+                saveData();
+                updateStudyPlan();
+                updateDashboard();
+            }
+        }
+
+        function getPriorityColor(priority) {
+            switch(priority) {
+                case 'high': return 'var(--danger)';
+                case 'medium': return 'var(--warning)';
+                case 'low': return 'var(--secondary)';
+                default: return 'var(--gray)';
+            }
+        }
+
+        // Timer Functions
+        function startTimer() {
+            if (!app.data.timerData.isRunning) {
+                app.data.timerData.isRunning = true;
+                
+                if (app.data.timerData.minutes === 0 && app.data.timerData.seconds === 0) {
+                    resetTimer();
+                }
+                
+                timerInterval = setInterval(updateTimer, 1000);
+                document.getElementById('timerStatus').textContent = 'In sessione';
+                showNotification('Timer avviato!', 'success');
+            }
+        }
+
+        function pauseTimer() {
+            if (app.data.timerData.isRunning) {
+                app.data.timerData.isRunning = false;
+                clearInterval(timerInterval);
+                document.getElementById('timerStatus').textContent = 'In pausa';
+                showNotification('Timer in pausa', 'info');
+            }
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            app.data.timerData.isRunning = false;
+            
+            const studyDuration = parseInt(document.getElementById('studyDuration').value);
+            app.data.timerData.minutes = studyDuration;
+            app.data.timerData.seconds = 0;
+            app.data.timerData.currentPhase = 'study';
+            
+            updateTimerDisplay();
+            document.getElementById('timerStatus').textContent = 'Pronto per iniziare';
+            document.getElementById('timerPhase').textContent = 'Sessione di studio';
+        }
+
+        function updateTimer() {
+            if (app.data.timerData.seconds === 0) {
+                if (app.data.timerData.minutes === 0) {
+                    timerComplete();
+                    return;
+                }
+                app.data.timerData.minutes--;
+                app.data.timerData.seconds = 59;
+            } else {
+                app.data.timerData.seconds--;
+            }
+            
+            updateTimerDisplay();
+        }
+
+        function updateTimerDisplay() {
+            const minutes = String(app.data.timerData.minutes).padStart(2, '0');
+            const seconds = String(app.data.timerData.seconds).padStart(2, '0');
+            document.getElementById('timerDisplay').textContent = `${minutes}:${seconds}`;
+        }
+
+        function timerComplete() {
+            clearInterval(timerInterval);
+            app.data.timerData.isRunning = false;
+            
+            if (app.data.settings.timerSounds) {
+                playNotificationSound();
+            }
+            
+            if (app.data.timerData.currentPhase === 'study') {
+                app.data.timerData.sessionCount++;
+                
+                const shortBreak = parseInt(document.getElementById('shortBreak').value);
+                const longBreak = parseInt(document.getElementById('longBreak').value);
+                
+                if (app.data.timerData.sessionCount % 4 === 0) {
+                    app.data.timerData.minutes = longBreak;
+                    app.data.timerData.currentPhase = 'longBreak';
+                    document.getElementById('timerPhase').textContent = 'Pausa lunga';
+                    showNotification('Pausa lunga!', 'success');
+                } else {
+                    app.data.timerData.minutes = shortBreak;
+                    app.data.timerData.currentPhase = 'shortBreak';
+                    document.getElementById('timerPhase').textContent = 'Pausa breve';
+                    showNotification('Pausa breve!', 'success');
+                }
+                
+                if (app.data.currentSubject) {
+                    const studyDuration = parseInt(document.getElementById('studyDuration').value);
+                    addAutomaticProgress(studyDuration);
+                }
+            } else {
+                const studyDuration = parseInt(document.getElementById('studyDuration').value);
+                app.data.timerData.minutes = studyDuration;
+                app.data.timerData.currentPhase = 'study';
+                document.getElementById('timerPhase').textContent = 'Sessione di studio';
+                showNotification('Torniamo a studiare!', 'info');
+            }
+            
+            app.data.timerData.seconds = 0;
+            updateTimerDisplay();
+            document.getElementById('timerStatus').textContent = 'Sessione completata';
+        }
+
+        function playNotificationSound() {
+            const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhB');
+            audio.play();
+        }
+
+        // Progress Functions
+        function addProgress() {
+            if (!app.data.currentSubject) {
+                showNotification('Seleziona prima una materia', 'error');
+                return;
+            }
+            
+            const topic = document.getElementById('progressTopic').value;
+            const time = parseInt(document.getElementById('progressTime').value);
+            const notes = document.getElementById('progressNotes').value;
+            
+            if (!topic || !time) {
+                showNotification('Compila tutti i campi', 'error');
+                return;
+            }
+            
+            const progress = {
+                id: Date.now().toString(),
+                topic,
+                time,
+                notes,
+                date: new Date().toISOString()
+            };
+            
+            if (!app.data.progress[app.data.currentSubject]) {
+                app.data.progress[app.data.currentSubject] = [];
+            }
+            
+            app.data.progress[app.data.currentSubject].push(progress);
+            saveData();
+            updateProgress();
+            updateDashboard();
+            showNotification('Progresso salvato', 'success');
+            
+            document.getElementById('progressTopic').value = '';
+            document.getElementById('progressTime').value = '';
+            document.getElementById('progressNotes').value = '';
+        }
+
+        function addAutomaticProgress(minutes) {
+            const progress = {
+                id: Date.now().toString(),
+                topic: 'Sessione Pomodoro',
+                time: minutes,
+                notes: 'Sessione completata automaticamente',
+                date: new Date().toISOString()
+            };
+            
+            if (!app.data.progress[app.data.currentSubject]) {
+                app.data.progress[app.data.currentSubject] = [];
+            }
+            
+            app.data.progress[app.data.currentSubject].push(progress);
+            saveData();
+            updateDashboard();
+        }
+
+        function updateProgress() {
+            const container = document.getElementById('progressHistory');
+            
+            if (!app.data.currentSubject || !app.data.progress[app.data.currentSubject] || app.data.progress[app.data.currentSubject].length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>Nessun progresso registrato</p></div>';
+                document.getElementById('overallProgress').style.width = '0%';
+                document.getElementById('progressPercentage').textContent = '0';
+                return;
+            }
+            
+            const progressList = app.data.progress[app.data.currentSubject];
+            
+            const totalGoals = app.data.studyPlans[app.data.currentSubject] ? app.data.studyPlans[app.data.currentSubject].length : 1;
+            const completedGoals = app.data.studyPlans[app.data.currentSubject] ? app.data.studyPlans[app.data.currentSubject].filter(i => i.completed).length : 0;
+            const percentage = totalGoals > 0 ? Math.round((completedGoals / totalGoals) * 100) : 0;
+            
+            document.getElementById('overallProgress').style.width = percentage + '%';
+            document.getElementById('progressPercentage').textContent = percentage;
+            
+            container.innerHTML = progressList.slice(-10).reverse().map(p => `
+                <div class="study-plan-item">
+                    <div class="study-plan-content">
+                        <h4>${p.topic}</h4>
+                        <p style="color: var(--gray); margin-top: 5px;">${p.notes}</p>
+                    </div>
+                    <div style="text-align: right;">
+                        <strong>${p.time} min</strong>
+                        <p style="color: var(--gray); margin-top: 5px;">${new Date(p.date).toLocaleDateString('it-IT')}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Calendar Functions
+        function addExam() {
+            if (!app.data.currentSubject) {
+                showNotification('Seleziona prima una materia', 'error');
+                return;
+            }
+            document.getElementById('examModal').style.display = 'block';
+        }
+
+        function saveExam() {
+            const name = document.getElementById('examName').value;
+            const date = document.getElementById('examDate').value;
+            const time = document.getElementById('examTime').value;
+            const room = document.getElementById('examRoom').value;
+            
+            if (!name || !date) {
+                showNotification('Inserisci nome e data', 'error');
+                return;
+            }
+            
+            const exam = {
+                id: Date.now().toString(),
+                name,
+                date,
+                time,
+                room,
+                createdAt: new Date().toISOString()
+            };
+            
+            if (!app.data.exams[app.data.currentSubject]) {
+                app.data.exams[app.data.currentSubject] = [];
+            }
+            
+            app.data.exams[app.data.currentSubject].push(exam);
+            saveData();
+            updateCalendar();
+            updateDashboard();
+            closeModal('examModal');
+            showNotification('Esame aggiunto', 'success');
+            
+            document.getElementById('examName').value = '';
+            document.getElementById('examDate').value = '';
+            document.getElementById('examTime').value = '';
+            document.getElementById('examRoom').value = '';
+        }
+
+        function updateCalendar() {
+            const container = document.getElementById('examsList');
+            
+            if (!app.data.currentSubject || !app.data.exams[app.data.currentSubject] || app.data.exams[app.data.currentSubject].length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <h3>Nessun esame programmato</h3>
+                        <p>Aggiungi i tuoi esami per tenerli sotto controllo</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const exams = app.data.exams[app.data.currentSubject].sort((a, b) => new Date(a.date) - new Date(b.date));
+            
+            container.innerHTML = exams.map(exam => {
+                const examDate = new Date(exam.date);
+                const today = new Date();
+                const daysUntil = Math.ceil((examDate - today) / (1000 * 60 * 60 * 24));
+                
+                return `
+                    <div class="exam-item">
+                        <div>
+                            <h4>${exam.name}</h4>
+                            <p style="color: var(--gray); margin-top: 5px;">
+                                📍 ${exam.room || 'Aula da definire'} | ⏰ ${exam.time || 'Orario da definire'}
+                            </p>
+                        </div>
+                        <div style="text-align: right;">
+                            <strong>${examDate.toLocaleDateString('it-IT')}</strong>
+                            <p style="color: ${daysUntil < 7 ? 'var(--danger)' : 'var(--gray)'}; margin-top: 5px;">
+                                ${daysUntil > 0 ? `Tra ${daysUntil} giorni` : daysUntil === 0 ? 'Oggi!' : 'Passato'}
+                            </p>
+                            <button class="btn btn-icon btn-danger" onclick="deleteExam('${exam.id}')" style="margin-top: 10px;">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function deleteExam(examId) {
+            if (confirm('Eliminare questo esame?')) {
+                app.data.exams[app.data.currentSubject] = app.data.exams[app.data.currentSubject].filter(e => e.id !== examId);
+                saveData();
+                updateCalendar();
+                updateDashboard();
+            }
+        }
+
+        // Settings Functions
+        function saveApiKey() {
+            const apiKey = document.getElementById('geminiApiKey').value;
+            if (apiKey) {
+                app.data.settings.geminiApiKey = apiKey;
+                saveData();
+                showNotification('API Key salvata', 'success');
+            }
+        }
+
+        // AI Chat Functions
+        function toggleAIChat() {
+            const popup = document.getElementById('aiChatPopup');
+            popup.style.display = popup.style.display === 'flex' ? 'none' : 'flex';
+        }
+
+        async function sendAIMessage() {
+            const input = document.getElementById('aiChatInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            const messagesContainer = document.getElementById('aiChatMessages');
+            
+            messagesContainer.innerHTML += `
+                <div class="ai-message user">${message}</div>
+            `;
+            
+            input.value = '';
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            if (!app.data.settings.geminiApiKey) {
+                messagesContainer.innerHTML += `
+                    <div class="ai-message bot">
+                        Configura la tua API Key di Gemini nelle impostazioni per utilizzare l'assistente AI.
+                    </div>
+                `;
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                return;
+            }
+            
+            messagesContainer.innerHTML += `
+                <div class="ai-message bot" id="typingIndicator">
+                    <span style="opacity: 0.5;">Sto pensando...</span>
+                </div>
+            `;
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            try {
+                const response = await callGeminiAPI(message);
+                document.getElementById('typingIndicator').remove();
+                messagesContainer.innerHTML += `
+                    <div class="ai-message bot">${response}</div>
+                `;
+            } catch (error) {
+                if (document.getElementById('typingIndicator')) {
+                    document.getElementById('typingIndicator').remove();
+                }
+                messagesContainer.innerHTML += `
+                    <div class="ai-message bot">
+                        Errore nella risposta. Controlla la tua API Key.
+                    </div>
+                `;
+            }
+            
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        async function callGeminiAPI(message) {
+            let context = "Sei un assistente AI per studenti universitari. ";
+            
+            if (app.data.currentSubject) {
+                const subject = app.data.subjects.find(s => s.id === app.data.currentSubject);
+                if (subject) {
+                    context += `Lo studente sta studiando ${subject.name}. `;
+                }
+            }
+            
+            const API_KEY = app.data.settings.geminiApiKey;
+            const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${API_KEY}`;
+            
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: context + "\n\nDomanda: " + message
+                        }]
+                    }]
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error('API request failed');
+            }
+            
+            const data = await response.json();
+            return data.candidates[0].content.parts[0].text;
+        }
+
+        // Navigation Functions
+        function showSection(sectionId) {
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            document.querySelectorAll('.nav-item').forEach(item => {
+                if (item.textContent.toLowerCase().includes(sectionId.toLowerCase()) ||
+                    (sectionId === 'dashboard' && item.textContent.includes('Dashboard')) ||
+                    (sectionId === 'studyPlan' && item.textContent.includes('Piano')) ||
+                    (sectionId === 'timer' && item.textContent.includes('Timer')) ||
+                    (sectionId === 'progress' && item.textContent.includes('Progressi')) ||
+                    (sectionId === 'calendar' && item.textContent.includes('Calendario')) ||
+                    (sectionId === 'settings' && item.textContent.includes('Impostazioni'))) {
+                    item.classList.add('active');
+                }
+            });
+            
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.getElementById(sectionId).classList.add('active');
+        }
+
+        function showSectionMobile(sectionId, element) {
+            document.querySelectorAll('.mobile-nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            element.classList.add('active');
+            showSection(sectionId);
+        }
+
+        function toggleMobileMenu() {
+            showSection('settings');
+        }
+
+        // Modal Functions
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        // Notification Function
+        function showNotification(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.style.background = 
+                type === 'success' ? 'var(--secondary)' : 
+                type === 'error' ? 'var(--danger)' : 
+                'var(--primary)';
+            notification.style.display = 'block';
+            
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+
+        // Event Listeners
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        }
+
+        window.addEventListener('resize', checkMobileView);
+
+        // Auto-save
+        setInterval(() => {
+            if (app.data && app.storageMode) {
+                saveData();
+            }
+        }, 30000);
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM loaded, initializing app...');
+            initApp();
+        });
+
+        // Handle redirect result
+        window.addEventListener('load', async () => {
+            if (app.storageMode === 'firebase' && auth) {
+                try {
+                    const result = await auth.getRedirectResult();
+                    if (result.user) {
+                        console.log('Redirect sign in successful:', result.user.email);
+                        app.user = result.user;
+                        updateAuthUI();
+                        await loadFirebaseData();
+                        showNotification(`Benvenuto ${result.user.displayName}!`, 'success');
+                    }
+                } catch (error) {
+                    console.error('Redirect result error:', error);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
